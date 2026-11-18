@@ -1,0 +1,89 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Sales Performance Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f1f3f6;--card:#fff;--tx:#1b2430;--mu:#64707f;--bd:#e2e6ec;--pri:#2563eb;--sec:#f97316;--ok:#16a34a;--bad:#dc2626;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f141b;--card:#1a212b;--tx:#e8edf3;--mu:#93a0b0;--bd:#2a3340;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f141b;--card:#1a212b;--tx:#e8edf3;--mu:#93a0b0;--bd:#2a3340;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:12px}
+h1{font-size:18px;margin:0}h2{font-size:14px;margin:0 0 8px}small,.mu{color:var(--mu)}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.logo{display:inline-block;background:var(--pri);color:#fff;border-radius:8px;padding:4px 9px;font-weight:700;margin-right:8px}
+.fl{display:flex;gap:8px;flex-wrap:wrap}
+select{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:7px 10px;font-size:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+.k,.c{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.k b{display:block;font-size:20px;margin-top:2px}.k span{font-size:12px;color:var(--mu)}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin-bottom:10px}
+.h{height:240px;position:relative}
+.t{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--bd);white-space:nowrap}th:first-child,td:first-child{text-align:left}
+th{color:var(--mu);font-weight:600}.up{color:var(--ok)}.dn{color:var(--bad)}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--pri);vertical-align:middle;margin-left:6px}
+</style></head><body>
+<header><div><span class="logo">SP</span><h1 style="display:inline">Sales Performance Analytics</h1><div><small>Sample data: 2024 to Oct 2026, 8 salespeople, 4 regions</small></div></div>
+<div class="fl"><select id="y"></select><select id="r"></select><select id="c"></select></div></header>
+<div class="kpis" id="kp"></div>
+<div class="g"><div class="c"><h2>Monthly sales, profit, target and 3-month forecast</h2><div class="h"><canvas id="a"></canvas></div></div>
+<div class="c"><h2>Sales and profit by category</h2><div class="h"><canvas id="b"></canvas></div></div></div>
+<div class="g"><div class="c"><h2>Sales by region</h2><div class="h"><canvas id="d"></canvas></div></div>
+<div class="c"><h2>Top 10 products by sales</h2><div class="h"><canvas id="e"></canvas></div></div></div>
+<div class="g"><div class="c t"><h2>Salesperson performance vs target</h2><table id="sp"></table></div>
+<div class="c t"><h2>State-wise profit (red = low margin)</h2><table id="st"></table></div></div>
+<div class="g"><div class="c t"><h2>Lowest-profit products</h2><table id="lp"></table></div>
+<div class="c t"><h2>Top 5 customers by profit</h2><table id="tc"></table></div></div>
+<script>
+const $=i=>document.getElementById(i),M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let s=42;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+const RG={West:['Maharashtra','Gujarat'],South:['Karnataka','Tamil Nadu'],North:['Delhi','Punjab'],East:['West Bengal','Odisha']};
+const SP=[['Neha Joshi','West'],['Rahul Mehta','West'],['Suresh Rao','South'],['Lakshmi N','South'],['Amit Verma','North'],['Pooja Bedi','North'],['Sourav Ghosh','East'],['Rina Sen','East']];
+const P=[['Laptop','Technology',55000,.78],['Smartphone','Technology',30000,.8],['Tablet','Technology',22000,.8],['Monitor','Technology',14000,.75],['Headphones','Technology',4000,.6],['Office Chair','Furniture',9000,.7],['Standing Desk','Furniture',18000,.82],['Bookcase','Furniture',6000,.9],['Notebook Pack','Office Supplies',400,.55],['Printer Paper','Office Supplies',650,.6],['Stapler Set','Office Supplies',350,.65],['Binder','Office Supplies',250,.7]];
+const F=['Aarav','Diya','Rohan','Sneha','Vikram','Meera','Arjun','Isha','Karan','Priya'],L=['Sharma','Patil','Reddy','Nair','Gupta','Kulkarni','Das','Singh','Iyer','Shah'];
+const O=[];
+for(let i=0;i<3200;i++){const mi=Math.floor(r()*34),mo=mi%12;if(r()*1.6>1+.5*(mo>=9)+.004*mi){i--;continue}
+const p=P[Math.floor(r()*P.length)],sp=SP[Math.floor(r()*8)],q=1+Math.floor(r()*4),d=[0,0,.05,.1,.2,.3][Math.floor(r()*6)],c=Math.floor(r()*100);
+const sa=p[2]*q*(1-d),co=p[2]*p[3]*q;
+O.push({y:2024+Math.floor(mi/12),m:mo,k:mi,p:p[0],cat:p[1],sp:sp[0],rg:sp[1],st:RG[sp[1]][r()<.5?0:1],c:F[c%10]+' '+L[Math.floor(c/10)],s:sa,pr:sa-co,q,ret:r()<.06});}
+const f=v=>v>=1e7?'₹'+(v/1e7).toFixed(2)+' Cr':v>=1e5?'₹'+(v/1e5).toFixed(2)+' L':'₹'+Math.round(v).toLocaleString('en-IN');
+const sum=(a,g)=>a.reduce((t,o)=>t+g(o),0);
+const grp=(a,key)=>{const m={};a.forEach(o=>{const k=o[key];(m[k]=m[k]||{s:0,p:0,n:0,q:0});m[k].s+=o.s;m[k].p+=o.pr;m[k].n++;m[k].q+=o.q});return m};
+const opt=(id,arr)=>{$(id).innerHTML=arr.map(v=>`<option>${v}</option>`).join('')};
+opt('y',['All','2024','2025','2026']);opt('r',['All',...Object.keys(RG)]);opt('c',['All','Technology','Furniture','Office Supplies']);
+['y','r','c'].forEach(i=>$(i).onchange=draw);
+const mk0=sum(O,o=>o.s)/34,TGT=Math.round(mk0*1.05);
+const C={};const ch=(id,cfg)=>{C[id]&&C[id].destroy();cfg.options=Object.assign({responsive:true,maintainAspectRatio:false},cfg.options||{});C[id]=new Chart($(id),cfg)};
+const mm=y=>y.toLocaleString('en-IN');
+function draw(){
+const cs=getComputedStyle(document.documentElement),mu=cs.getPropertyValue('--mu').trim(),bd=cs.getPropertyValue('--bd').trim();
+Chart.defaults.color=mu;Chart.defaults.borderColor=bd;
+const y=$('y').value,rg=$('r').value,ct=$('c').value;
+const D=O.filter(o=>(y=='All'||o.y==y)&&(rg=='All'||o.rg==rg)&&(ct=='All'||o.cat==ct));
+const S=sum(D,o=>o.s),Pf=sum(D,o=>o.pr),n=D.length,cu=new Set(D.map(o=>o.c)).size,rt=D.filter(o=>o.ret).length;
+const mon=grp(D,'k'),ks=Object.keys(mon).map(Number).sort((a,b)=>a-b);
+const gr=ks.length>1?(mon[ks[ks.length-1]].s/mon[ks[ks.length-2]].s-1)*100:0;
+const kp=[['Total sales',f(S)],['Total profit',f(Pf)],['Orders',mm(n)],['Customers',cu],['Avg order value',f(n?S/n:0)],['Profit margin',(S?Pf/S*100:0).toFixed(1)+'%'],['Units sold',mm(sum(D,o=>o.q))],['Return rate',(n?rt/n*100:0).toFixed(1)+'%'],['MoM growth',`<span class="${gr>=0?'up':'dn'}">${gr>=0?'▲':'▼'} ${Math.abs(gr).toFixed(1)}%</span>`]];
+$('kp').innerHTML=kp.map(k=>`<div class="k"><span>${k[0]}</span><b>${k[1]}</b></div>`).join('');
+// trend + forecast
+const lab=ks.map(k=>M[k%12]+' '+(24+Math.floor(k/12))),sv=ks.map(k=>mon[k].s),pv=ks.map(k=>mon[k].p);
+const N=sv.length;let fc=[];
+if(N>2){const mx=(N-1)/2,my=sv.reduce((a,b)=>a+b)/N;let nu=0,de=0;sv.forEach((v,i)=>{nu+=(i-mx)*(v-my);de+=(i-mx)**2});const sl=nu/de;for(let j=1;j<=3;j++)fc.push(Math.max(0,my+sl*(N-1+j-mx)));const l=ks[N-1];for(let j=1;j<=3;j++){const k=l+j;lab.push(M[k%12]+' '+(24+Math.floor(k/12)))}}
+const pad=a=>[...a,...fc.map(()=>null)],tg=lab.map(()=>TGT*(y=='All'&&rg=='All'&&ct=='All'?1:(D.length/O.length)*34/Math.max(N,1)));
+ch('a',{type:'line',data:{labels:lab,datasets:[{label:'Sales',data:pad(sv),borderColor:'#2563eb',tension:.3,pointRadius:0},{label:'Profit',data:pad(pv),borderColor:'#16a34a',tension:.3,pointRadius:0},{label:'Target',data:tg,borderColor:'#f97316',borderDash:[4,4],pointRadius:0},{label:'Forecast',data:fc.length?[...sv.map((v,i)=>i==N-1?v:null),...fc]:[],borderColor:'#9333ea',borderDash:[6,3],pointRadius:2}]},options:{scales:{y:{ticks:{callback:f}},x:{ticks:{maxTicksLimit:7}}},plugins:{legend:{labels:{boxWidth:10}}}}});
+const cg=grp(D,'cat'),cn=Object.keys(cg);
+ch('b',{type:'bar',data:{labels:cn,datasets:[{label:'Sales',data:cn.map(c=>cg[c].s),backgroundColor:'#2563eb'},{label:'Profit',data:cn.map(c=>cg[c].p),backgroundColor:'#f97316'}]},options:{scales:{y:{ticks:{callback:f}}}}});
+const rgp=grp(D,'rg'),rn=Object.keys(rgp);
+ch('d',{type:'doughnut',data:{labels:rn,datasets:[{data:rn.map(k=>rgp[k].s),backgroundColor:['#2563eb','#f97316','#16a34a','#9333ea'],borderWidth:0}]},options:{plugins:{tooltip:{callbacks:{label:c=>c.label+': '+f(c.raw)}}}}});
+const pg=grp(D,'p'),pn=Object.keys(pg).sort((a,b)=>pg[b].s-pg[a].s);
+ch('e',{type:'bar',data:{labels:pn.slice(0,10),datasets:[{label:'Sales',data:pn.slice(0,10).map(k=>pg[k].s),backgroundColor:'#2563eb'}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:f}}}}});
+// tables
+const nm=new Set(D.map(o=>o.k)).size,spg=grp(D,'sp'),spn=Object.keys(spg).sort((a,b)=>spg[b].s-spg[a].s),tp=TGT/8*nm;
+$('sp').innerHTML='<tr><th>Salesperson</th><th>Sales</th><th>Target</th><th>Achieved</th></tr>'+spn.map(k=>{const a=spg[k].s/tp*100;return `<tr><td>${k}</td><td>${f(spg[k].s)}</td><td>${f(tp)}</td><td class="${a>=100?'up':'dn'}">${a.toFixed(0)}%<span class="bar" style="width:${Math.min(a,150)/3}px"></span></td></tr>`}).join('');
+const sg=grp(D,'st'),sn=Object.keys(sg).sort((a,b)=>sg[b].p-sg[a].p);
+$('st').innerHTML='<tr><th>State</th><th>Sales</th><th>Profit</th><th>Margin</th></tr>'+sn.map(k=>{const m=sg[k].p/sg[k].s*100;return `<tr><td>${k}</td><td>${f(sg[k].s)}</td><td>${f(sg[k].p)}</td><td class="${m<18?'dn':'up'}">${m.toFixed(1)}%</td></tr>`}).join('');
+const lp=Object.keys(pg).sort((a,b)=>pg[a].p/pg[a].s-pg[b].p/pg[b].s).slice(0,5);
+$('lp').innerHTML='<tr><th>Product</th><th>Sales</th><th>Profit</th><th>Margin</th></tr>'+lp.map(k=>{const m=pg[k].p/pg[k].s*100;return `<tr><td>${k}</td><td>${f(pg[k].s)}</td><td>${f(pg[k].p)}</td><td class="${m<10?'dn':''}">${m.toFixed(1)}%</td></tr>`}).join('');
+const cg2=grp(D,'c'),cn2=Object.keys(cg2).sort((a,b)=>cg2[b].p-cg2[a].p).slice(0,5);
+$('tc').innerHTML='<tr><th>Customer</th><th>Orders</th><th>Sales</th><th>Profit</th></tr>'+cn2.map(k=>`<tr><td>${k}</td><td>${cg2[k].n}</td><td>${f(cg2[k].s)}</td><td>${f(cg2[k].p)}</td></tr>`).join('');
+}
+draw();matchMedia('(prefers-color-scheme: dark)').onchange=draw;
+</script></body></html>
